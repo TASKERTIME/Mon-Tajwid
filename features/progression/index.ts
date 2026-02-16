@@ -22,22 +22,25 @@ export async function validateSurah(
   score: number
 ): Promise<ValidationResult> {
   const isValidated = score >= 70
+  const now = new Date().toISOString()
+
+  const upsertData: Record<string, any> = {
+    user_id: userId,
+    surah_id: surahId,
+    juz_id: juzId,
+    is_validated: isValidated,
+    best_score: score,
+    attempts: 1,
+    last_attempt_at: now,
+  }
+
+  if (isValidated) {
+    upsertData.validated_at = now
+  }
 
   const { error: surahError } = await supabase
     .from('user_progress')
-    .upsert(
-      {
-        user_id: userId,
-        surah_id: surahId,
-        juz_id: juzId,
-        is_validated: isValidated,
-        best_score: score,
-        attempts: 1,
-        last_attempt_at: new Date().toISOString(),
-        ...(isValidated ? { validated_at: new Date().toISOString() } : {}),
-      },
-      { onConflict: 'user_id,surah_id' }
-    )
+    .upsert(upsertData, { onConflict: 'user_id,surah_id' })
 
   if (surahError) throw surahError
 
@@ -54,7 +57,7 @@ export async function validateSurah(
       .eq('user_id', userId)
       .in('surah_id', surahsInJuz)
 
-    const validatedSurahs = progress?.filter((p) => p.is_validated).length || 0
+    const validatedSurahs = (progress as any[])?.filter((p: any) => p.is_validated).length || 0
     juzCompleted = validatedSurahs >= surahsInJuz.length
 
     if (juzCompleted) {
@@ -67,7 +70,7 @@ export async function validateSurah(
           juz_id: juzId,
           is_completed: true,
           trophy_earned: true,
-          completed_at: new Date().toISOString(),
+          completed_at: now,
         },
         { onConflict: 'user_id,juz_id' }
       )
@@ -104,7 +107,7 @@ export async function loadUserProgress(userId: string) {
   ])
 
   const surahProgress: Record<number, { validated: boolean; bestScore: number; attempts: number }> = {}
-  surahRes.data?.forEach((p) => {
+  ;(surahRes.data as any[])?.forEach((p: any) => {
     surahProgress[p.surah_id] = {
       validated: p.is_validated,
       bestScore: p.best_score,
@@ -113,7 +116,7 @@ export async function loadUserProgress(userId: string) {
   })
 
   const juzProgress: Record<number, { unlocked: boolean; completed: boolean; trophy: boolean }> = {}
-  juzRes.data?.forEach((p) => {
+  ;(juzRes.data as any[])?.forEach((p: any) => {
     juzProgress[p.juz_id] = {
       unlocked: p.is_unlocked,
       completed: p.is_completed,
