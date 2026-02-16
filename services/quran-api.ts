@@ -1,6 +1,6 @@
 /**
  * Quran Data Service
- * Source: api.quran.com v4 — texte Uthmani authentique
+ * Source: api.quran.com v4
  */
 
 const QURAN_API = 'https://api.quran.com/api/v4'
@@ -26,52 +26,29 @@ export interface Verse {
   page_number: number
 }
 
-// ===================== JUZ → SURAH MAPPING =====================
-// Mapping statique Juz → Sourates (IDs des sourates contenues dans chaque Juz)
+// 30 Juz — 2 premieres sourates de chaque Juz (toutes debloquees)
 export const JUZ_SURAH_MAP: Record<number, number[]> = {
-  1: [1, 2],
-  2: [2],
-  3: [2, 3],
-  4: [3, 4],
-  5: [4],
-  6: [4, 5],
-  7: [5, 6],
-  8: [6, 7],
-  9: [7, 8],
-  10: [8, 9],
-  11: [9, 10, 11],
-  12: [11, 12],
-  13: [12, 13, 14],
-  14: [15, 16],
-  15: [17, 18],
-  16: [18, 19, 20],
-  17: [21, 22],
-  18: [23, 24, 25],
-  19: [25, 26, 27],
-  20: [27, 28, 29],
-  21: [29, 30, 31, 32, 33],
-  22: [33, 34, 35, 36],
-  23: [36, 37, 38, 39],
-  24: [39, 40, 41],
-  25: [41, 42, 43, 44, 45],
-  26: [46, 47, 48, 49, 50, 51],
-  27: [51, 52, 53, 54, 55, 56, 57],
-  28: [58, 59, 60, 61, 62, 63, 64, 65, 66],
-  29: [67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77],
-  30: [78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114],
+  1: [1, 2], 2: [2, 3], 3: [3, 4], 4: [4, 5], 5: [4, 5],
+  6: [5, 6], 7: [6, 7], 8: [7, 8], 9: [7, 8], 10: [8, 9],
+  11: [9, 10], 12: [11, 12], 13: [12, 13], 14: [15, 16], 15: [17, 18],
+  16: [18, 19], 17: [21, 22], 18: [23, 24], 19: [25, 26], 20: [27, 28],
+  21: [29, 30], 22: [33, 34], 23: [36, 37], 24: [39, 40], 25: [41, 42],
+  26: [46, 47], 27: [51, 52], 28: [58, 59], 29: [67, 68], 30: [78, 79],
 }
 
-// ===================== RECITERS =====================
 export const RECITERS = [
-  { id: '7', name: 'Mishary Rashid Alafasy', name_ar: 'مشاري العفاسي' },
-  { id: '1', name: 'Abdul Basit Abdul Samad', name_ar: 'عبد الباسط عبد الصمد' },
-  { id: '5', name: 'Abu Bakr al-Shatri', name_ar: 'أبو بكر الشاطري' },
-  { id: '6', name: 'Maher Al Muaiqly', name_ar: 'ماهر المعيقلي' },
-  { id: '10', name: 'Saad Al-Ghamdi', name_ar: 'سعد الغامدي' },
-  { id: '12', name: 'Yasser Ad-Dossari', name_ar: 'ياسر الدوسري' },
+  { id: '7', name: 'Mishary Rashid Alafasy', name_ar: 'مشاري العفاسي', style: 'Murattal lent et melodieux' },
+  { id: '1', name: 'Abdul Basit Abdul Samad', name_ar: 'عبد الباسط عبد الصمد', style: 'Classique egyptien' },
+  { id: '5', name: 'Abu Bakr al-Shatri', name_ar: 'أبو بكر الشاطري', style: 'Recitation de Makkah' },
+  { id: '6', name: 'Maher Al Muaiqly', name_ar: 'ماهر المعيقلي', style: 'Imam Masjid al-Haram' },
+  { id: '10', name: 'Saad Al-Ghamdi', name_ar: 'سعد الغامدي', style: 'Clair et distinct' },
+  { id: '12', name: 'Yasser Ad-Dossari', name_ar: 'ياسر الدوسري', style: 'Emouvant et spirituel' },
 ]
 
-// ===================== API CALLS =====================
+// Strip HTML tags from translations (fix <sup foot_note=xxx>...</sup>)
+function stripHtml(text: string): string {
+  return text.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
+}
 
 export async function fetchSurahs(): Promise<Surah[]> {
   const res = await fetch(`${QURAN_API}/chapters?language=fr`)
@@ -91,9 +68,11 @@ export async function fetchVerses(
   surahId: number,
   reciterId: string = '7'
 ): Promise<Verse[]> {
-  const [textRes, transRes, audioRes] = await Promise.all([
+  // Fetch text, translation FR, transliteration EN, and audio in parallel
+  const [textRes, transRes, translitRes, audioRes] = await Promise.all([
     fetch(`${QURAN_API}/verses/by_chapter/${surahId}?language=fr&words=false&per_page=300&fields=text_uthmani`),
     fetch(`${QURAN_API}/verses/by_chapter/${surahId}?language=fr&per_page=300&translations=136`),
+    fetch(`${QURAN_API}/verses/by_chapter/${surahId}?language=en&per_page=300&fields=text_transliteration`),
     fetch(`${QURAN_API}/recitations/${reciterId}/by_chapter/${surahId}`),
   ])
 
@@ -101,6 +80,7 @@ export async function fetchVerses(
 
   const textData = await textRes.json()
   const transData = await transRes.json()
+  const translitData = await translitRes.json()
   const audioData = await audioRes.json()
 
   const audioMap = new Map<number, string>()
@@ -109,27 +89,20 @@ export async function fetchVerses(
     audioMap.set(verseNum, `https://audio.qurancdn.com/${af.url}`)
   })
 
-  return textData.verses.map((v: any, i: number) => ({
-    id: v.id,
-    verse_number: v.verse_number,
-    verse_key: v.verse_key,
-    text_uthmani: v.text_uthmani,
-    text_transliteration: '',
-    translation_fr: transData.verses?.[i]?.translations?.[0]?.text || '',
-    audio_url: audioMap.get(v.verse_number) || '',
-    juz_number: v.juz_number,
-    page_number: v.page_number,
-  }))
-}
+  return textData.verses.map((v: any, i: number) => {
+    const rawTranslation = transData.verses?.[i]?.translations?.[0]?.text || ''
+    const transliteration = translitData.verses?.[i]?.text_transliteration || ''
 
-export async function fetchTransliteration(surahId: number): Promise<Map<number, string>> {
-  const res = await fetch(
-    `${QURAN_API}/verses/by_chapter/${surahId}?language=en&per_page=300&translations=57`
-  )
-  const data = await res.json()
-  const map = new Map<number, string>()
-  data.verses?.forEach((v: any) => {
-    map.set(v.verse_number, v.translations?.[0]?.text || '')
+    return {
+      id: v.id,
+      verse_number: v.verse_number,
+      verse_key: v.verse_key,
+      text_uthmani: v.text_uthmani,
+      text_transliteration: transliteration,
+      translation_fr: stripHtml(rawTranslation),
+      audio_url: audioMap.get(v.verse_number) || '',
+      juz_number: v.juz_number,
+      page_number: v.page_number,
+    }
   })
-  return map
 }

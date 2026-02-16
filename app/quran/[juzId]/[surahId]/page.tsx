@@ -7,21 +7,8 @@ import { useQuranStore, useUserStore, useProgressStore } from '@/lib/store'
 import { fetchVerses, type Verse } from '@/services/quran-api'
 import { VoiceRecorder, analyzeRecitation, type RecitationResult } from '@/features/voice-recognition'
 import {
-  ArrowLeft,
-  Play,
-  Pause,
-  SkipForward,
-  SkipBack,
-  Mic,
-  MicOff,
-  Star,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  Eye,
-  BookOpen,
-  Languages,
-  Type,
+  ArrowLeft, Play, Pause, SkipForward, SkipBack, Mic, MicOff,
+  Star, CheckCircle2, XCircle, Loader2, Eye, BookOpen, Languages, Type,
 } from 'lucide-react'
 
 type ViewMode = 'learn' | 'validate'
@@ -30,373 +17,252 @@ export default function SurahPage() {
   const params = useParams()
   const juzId = parseInt(params.juzId as string)
   const surahId = parseInt(params.surahId as string)
-
   const [verses, setVerses] = useState<Verse[]>([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<ViewMode>('learn')
-
-  const { displayMode, setDisplayMode, currentVerse, setCurrentVerse, isPlaying, setPlaying } =
-    useQuranStore()
+  const { displayMode, setDisplayMode, currentVerse, setCurrentVerse, isPlaying, setPlaying } = useQuranStore()
   const { preferredReciter } = useUserStore()
   const { surahProgress } = useProgressStore()
   const isValidated = surahProgress[surahId]?.validated || false
-
-  // Audio
   const audioRef = useRef<HTMLAudioElement>(null)
-  const [audioLoading, setAudioLoading] = useState(false)
-
-  // Validation mode state
   const [isRecording, setIsRecording] = useState(false)
   const [recitationResult, setRecitationResult] = useState<RecitationResult | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
   const recorderRef = useRef<VoiceRecorder | null>(null)
 
-  // Load verses
   useEffect(() => {
     async function load() {
       try {
         const data = await fetchVerses(surahId, preferredReciter)
         setVerses(data)
         if (data.length > 0) setCurrentVerse(1)
-      } catch (err) {
-        console.error('Failed to load verses:', err)
-      } finally {
-        setLoading(false)
-      }
+      } catch (err) { console.error(err) }
+      finally { setLoading(false) }
     }
     load()
   }, [surahId, preferredReciter, setCurrentVerse])
 
-  // Audio controls
-  const playVerse = (verseNum: number) => {
-    const verse = verses.find((v) => v.verse_number === verseNum)
-    if (!verse?.audio_url || !audioRef.current) return
-    setCurrentVerse(verseNum)
-    audioRef.current.src = verse.audio_url
+  const playVerse = (n: number) => {
+    const v = verses.find((v) => v.verse_number === n)
+    if (!v?.audio_url || !audioRef.current) return
+    setCurrentVerse(n)
+    audioRef.current.src = v.audio_url
     audioRef.current.play()
     setPlaying(true)
   }
-
   const togglePlay = () => {
     if (!audioRef.current) return
-    if (isPlaying) {
-      audioRef.current.pause()
-      setPlaying(false)
-    } else if (currentVerse) {
-      playVerse(currentVerse)
-    }
+    if (isPlaying) { audioRef.current.pause(); setPlaying(false) }
+    else if (currentVerse) playVerse(currentVerse)
   }
 
-  const nextVerse = () => {
-    if (currentVerse && currentVerse < verses.length) playVerse(currentVerse + 1)
-  }
-
-  const prevVerse = () => {
-    if (currentVerse && currentVerse > 1) playVerse(currentVerse - 1)
-  }
-
-  // Voice recording
   const startRecording = async () => {
     try {
       recorderRef.current = new VoiceRecorder()
       await recorderRef.current.start()
       setIsRecording(true)
       setRecitationResult(null)
-    } catch (err) {
-      console.error('Microphone error:', err)
-      alert("Impossible d'accéder au microphone. Vérifie les permissions.")
-    }
+    } catch { alert("Impossible d'accéder au microphone.") }
   }
 
   const stopRecording = async () => {
     if (!recorderRef.current) return
     setIsRecording(false)
     setAnalyzing(true)
-
     try {
       const result = await recorderRef.current.stop()
       const { blob, duration } = result as any
       const expectedText = verses.map((v) => v.text_uthmani).join(' ')
       const analysisResult = await analyzeRecitation(blob, expectedText, duration)
       setRecitationResult(analysisResult)
-    } catch (err) {
-      console.error('Analysis error:', err)
-      alert("Erreur lors de l'analyse. Réessaie.")
-    } finally {
-      setAnalyzing(false)
-    }
+    } catch { alert("Erreur lors de l'analyse.") }
+    finally { setAnalyzing(false) }
   }
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <Loader2 className="w-8 h-8 text-sacred-400 animate-spin" />
-      </div>
-    )
+    return <div className="flex justify-center items-center min-h-screen"><Loader2 className="w-8 h-8 text-emerald-400 animate-spin" /></div>
   }
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 pb-40">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
-        <Link href={`/quran/${juzId}`} className="p-2 rounded-xl bg-night-800 hover:bg-night-700 transition">
+        <Link href={`/quran/${juzId}`} className="p-2 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition">
           <ArrowLeft className="w-5 h-5 text-white" />
         </Link>
         <div className="flex-1">
           <h1 className="font-heading text-xl font-bold text-white flex items-center gap-2">
             Sourate {surahId}
-            {isValidated && <Star className="w-5 h-5 text-gold-400 fill-gold-400" />}
+            {isValidated && <Star className="w-5 h-5 text-amber-400 fill-amber-400" />}
           </h1>
         </div>
       </div>
 
-      {/* Mode toggle: Apprendre / Valider */}
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setViewMode('learn')}
-          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-            viewMode === 'learn'
-              ? 'bg-sacred-500 text-white shadow-lg shadow-sacred-500/20'
-              : 'bg-night-800 text-night-400 hover:text-white'
-          }`}
-        >
-          <BookOpen className="w-4 h-4 inline mr-1.5" />
-          Apprendre
+      {/* Mode toggle */}
+      <div className="flex gap-2 p-1 rounded-xl bg-white/[0.03] border border-white/5 mb-5">
+        <button onClick={() => setViewMode('learn')}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${
+            viewMode === 'learn' ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20' : 'text-white/30'}`}>
+          <BookOpen className="w-4 h-4" /> Apprendre
         </button>
-        <button
-          onClick={() => setViewMode('validate')}
-          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-            viewMode === 'validate'
-              ? 'bg-gold-400 text-night-900 shadow-lg shadow-gold-400/20'
-              : 'bg-night-800 text-night-400 hover:text-white'
-          }`}
-        >
-          <Mic className="w-4 h-4 inline mr-1.5" />
-          Valider
+        <button onClick={() => setViewMode('validate')}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${
+            viewMode === 'validate' ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20' : 'text-white/30'}`}>
+          <Mic className="w-4 h-4" /> Valider
         </button>
       </div>
 
-      {/* Display mode selector (learn only) */}
+      {/* Display mode (learn only) */}
       {viewMode === 'learn' && (
-        <div className="flex gap-1.5 mb-6 bg-night-800/50 p-1 rounded-xl">
-          {[
-            { mode: 'arabic' as const, icon: <Type className="w-3.5 h-3.5" />, label: 'عربي' },
-            { mode: 'phonetic' as const, icon: <Languages className="w-3.5 h-3.5" />, label: 'Phon.' },
-            { mode: 'translation' as const, icon: <BookOpen className="w-3.5 h-3.5" />, label: 'FR' },
-            { mode: 'all' as const, icon: <Eye className="w-3.5 h-3.5" />, label: 'Tout' },
-          ].map(({ mode, icon, label }) => (
-            <button
-              key={mode}
-              onClick={() => setDisplayMode(mode)}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1 ${
-                displayMode === mode
-                  ? 'bg-sacred-500/20 text-sacred-400'
-                  : 'text-night-500 hover:text-night-300'
-              }`}
-            >
-              {icon} {label}
+        <div className="flex gap-1 mb-5 p-1 rounded-lg bg-white/[0.02]">
+          {([
+            { key: 'arabic' as const, label: 'عربي' },
+            { key: 'phonetic' as const, label: 'Phon.' },
+            { key: 'translation' as const, label: 'FR' },
+            { key: 'all' as const, label: 'Tout' },
+          ]).map(({ key, label }) => (
+            <button key={key} onClick={() => setDisplayMode(key)}
+              className={`flex-1 py-1.5 rounded-md text-xs font-medium transition ${
+                displayMode === key ? 'bg-emerald-500/15 text-emerald-300' : 'text-white/25'}`}>
+              {label}
             </button>
           ))}
         </div>
       )}
 
-      {/* ===================== LEARN MODE ===================== */}
+      {/* LEARN MODE */}
       {viewMode === 'learn' && (
-        <div className="space-y-4">
-          {verses.map((verse) => (
-            <div
-              key={verse.verse_number}
-              onClick={() => playVerse(verse.verse_number)}
-              className={`card-sacred p-5 cursor-pointer transition-all ${
-                currentVerse === verse.verse_number
-                  ? 'glow-border bg-night-800/80'
-                  : 'hover:bg-night-800/40'
-              }`}
-            >
-              <div className="flex justify-between items-start mb-3">
-                <span className="w-7 h-7 rounded-full bg-sacred-500/20 flex items-center justify-center text-xs text-sacred-400 font-semibold">
-                  {verse.verse_number}
+        <div className="space-y-3">
+          {verses.map((v) => (
+            <button key={v.verse_number} onClick={() => playVerse(v.verse_number)}
+              className={`w-full text-left p-5 rounded-2xl transition-all ${
+                currentVerse === v.verse_number ? 'card-v2-active' : 'card-v2 hover:bg-white/[0.04]'}`}>
+              <div className="flex items-start justify-between mb-3">
+                <span className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-xs text-emerald-400 font-bold">
+                  {v.verse_number}
                 </span>
+                {currentVerse === v.verse_number && isPlaying && (
+                  <div className="flex items-end gap-[3px] h-5">
+                    {[1,2,3,4,5].map((i) => (
+                      <div key={i} className="w-[3px] bg-emerald-400 rounded-full"
+                        style={{ animation: 'audioBar 1s ease-in-out infinite', animationDelay: `${i*0.1}s`, height: '40%' }} />
+                    ))}
+                  </div>
+                )}
               </div>
-
-              {/* Arabic */}
               {(displayMode === 'arabic' || displayMode === 'all') && (
-                <p className="arabic-verse mb-3">{verse.text_uthmani}</p>
+                <p className="arabic-verse mb-3">{v.text_uthmani}</p>
               )}
-
-              {/* Phonetic */}
-              {(displayMode === 'phonetic' || displayMode === 'all') && verse.text_transliteration && (
-                <p className="text-sacred-300/70 text-sm italic mb-2">{verse.text_transliteration}</p>
+              {(displayMode === 'phonetic' || displayMode === 'all') && v.text_transliteration && (
+                <p className="text-emerald-200/50 text-sm italic mb-2">{v.text_transliteration}</p>
               )}
-
-              {/* French translation */}
               {(displayMode === 'translation' || displayMode === 'all') && (
-                <p className="text-night-300 text-sm leading-relaxed">{verse.translation_fr}</p>
+                <p className="text-white/40 text-sm leading-relaxed">{v.translation_fr}</p>
               )}
-            </div>
+            </button>
           ))}
         </div>
       )}
 
-      {/* ===================== VALIDATE MODE ===================== */}
+      {/* VALIDATE MODE */}
       {viewMode === 'validate' && (
         <div className="text-center py-8">
-          {/* Ready state */}
           {!isRecording && !analyzing && !recitationResult && (
             <div className="space-y-6">
-              <div className="w-24 h-24 mx-auto rounded-full bg-night-800 flex items-center justify-center">
-                <Mic className="w-10 h-10 text-night-500" />
+              <div className="w-24 h-24 mx-auto rounded-full card-v2 flex items-center justify-center">
+                <Mic className="w-10 h-10 text-white/20" />
               </div>
               <div>
-                <h2 className="text-white font-heading text-lg mb-2">Prêt à réciter ?</h2>
-                <p className="text-night-400 text-sm max-w-xs mx-auto">
-                  Récite la sourate entière. L&apos;IA vérifiera l&apos;exactitude et le respect du Tajwid.
+                <h2 className="font-heading text-white text-lg mb-2">Prêt à réciter ?</h2>
+                <p className="text-white/35 text-sm max-w-xs mx-auto">
+                  L&apos;IA vérifiera la précision et le Tajwid.
                 </p>
               </div>
-              <button onClick={startRecording} className="btn-gold text-lg px-10">
-                Commencer
-              </button>
+              <button onClick={startRecording} className="btn-gold text-lg px-10">Commencer</button>
             </div>
           )}
-
-          {/* Recording state */}
           {isRecording && (
             <div className="space-y-6">
-              <div className="w-24 h-24 mx-auto rounded-full bg-red-500/20 flex items-center justify-center animate-glow-pulse">
+              <div className="w-24 h-24 mx-auto rounded-full bg-red-500/10 flex items-center justify-center" style={{ animation: 'pulse-glow 2s ease-in-out infinite' }}>
                 <Mic className="w-10 h-10 text-red-400" />
               </div>
-              <div className="audio-wave mx-auto justify-center">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <span key={i} />
+              <div className="flex items-end gap-1 justify-center h-10">
+                {Array.from({length:20}).map((_,i) => (
+                  <div key={i} className="w-1 bg-red-400/60 rounded-full" style={{ animation:'audioBar 1.2s ease-in-out infinite', animationDelay:`${i*0.06}s`, height:`${20+Math.random()*80}%` }}/>
                 ))}
               </div>
-              <p className="text-white font-semibold">Récitation en cours...</p>
-              <button
-                onClick={stopRecording}
-                className="bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-8 rounded-xl transition"
-              >
-                <MicOff className="w-4 h-4 inline mr-2" />
-                Arrêter
+              <p className="text-white font-medium">Récitation en cours...</p>
+              <button onClick={stopRecording} className="bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-8 rounded-xl transition">
+                <MicOff className="w-4 h-4 inline mr-2" /> Arrêter
               </button>
             </div>
           )}
-
-          {/* Analyzing state */}
           {analyzing && (
             <div className="space-y-4 py-8">
-              <Loader2 className="w-10 h-10 text-sacred-400 animate-spin mx-auto" />
-              <p className="text-night-300">Analyse en cours...</p>
+              <Loader2 className="w-10 h-10 text-emerald-400 animate-spin mx-auto" />
+              <p className="text-white/40">Analyse en cours...</p>
             </div>
           )}
-
-          {/* Result state */}
-          {recitationResult && (
-            <ResultView result={recitationResult} onRetry={() => setRecitationResult(null)} />
-          )}
+          {recitationResult && <ResultView result={recitationResult} onRetry={() => setRecitationResult(null)} />}
         </div>
       )}
 
-      {/* Audio player bar (learn mode) */}
+      {/* Audio bar */}
       {viewMode === 'learn' && (
-        <div className="fixed bottom-0 left-0 right-0 bg-night-900/95 backdrop-blur-lg border-t border-night-700/50 px-4 py-4 z-50">
-          <div className="max-w-lg mx-auto flex items-center justify-center gap-6">
-            <button onClick={prevVerse} className="p-2 text-night-400 hover:text-white transition">
+        <div className="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-xl border-t border-white/5 z-50">
+          <div className="max-w-lg mx-auto flex items-center justify-center gap-8 py-4">
+            <button onClick={() => currentVerse && currentVerse > 1 && playVerse(currentVerse-1)} className="text-white/25 hover:text-white/50">
               <SkipBack className="w-5 h-5" />
             </button>
-            <button
-              onClick={togglePlay}
-              className="w-14 h-14 rounded-full bg-sacred-500 hover:bg-sacred-600 flex items-center justify-center transition shadow-lg shadow-sacred-500/30"
-            >
-              {isPlaying ? (
-                <Pause className="w-6 h-6 text-white" />
-              ) : (
-                <Play className="w-6 h-6 text-white ml-0.5" />
-              )}
+            <button onClick={togglePlay} className="w-14 h-14 rounded-full btn-emerald flex items-center justify-center">
+              {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-0.5" />}
             </button>
-            <button onClick={nextVerse} className="p-2 text-night-400 hover:text-white transition">
+            <button onClick={() => currentVerse && currentVerse < verses.length && playVerse(currentVerse+1)} className="text-white/25 hover:text-white/50">
               <SkipForward className="w-5 h-5" />
             </button>
           </div>
-          <p className="text-center text-night-500 text-xs mt-2">
-            Verset {currentVerse || '–'} / {verses.length}
-          </p>
+          <p className="text-center text-white/20 text-xs pb-3">Verset {currentVerse || '–'} / {verses.length}</p>
         </div>
       )}
 
-      {/* Hidden audio element */}
-      <audio
-        ref={audioRef}
-        onEnded={() => {
-          setPlaying(false)
-          if (currentVerse && currentVerse < verses.length) {
-            setTimeout(() => playVerse(currentVerse + 1), 500)
-          }
-        }}
-        onLoadStart={() => setAudioLoading(true)}
-        onCanPlay={() => setAudioLoading(false)}
-      />
+      <audio ref={audioRef}
+        onEnded={() => { setPlaying(false); if (currentVerse && currentVerse < verses.length) setTimeout(() => playVerse(currentVerse+1), 500) }} />
     </div>
   )
 }
 
-/* ===================== RESULT COMPONENT ===================== */
 function ResultView({ result, onRetry }: { result: RecitationResult; onRetry: () => void }) {
   const passed = result.overallScore >= 70
-
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Score circle */}
-      <div
-        className={`w-28 h-28 mx-auto rounded-full flex items-center justify-center ${
-          passed ? 'bg-sacred-500/20' : 'bg-red-500/20'
-        }`}
-      >
-        <div className="text-center">
-          <span className={`text-3xl font-bold ${passed ? 'text-sacred-400' : 'text-red-400'}`}>
-            {result.overallScore}
-          </span>
-          <span className={`text-sm block ${passed ? 'text-sacred-500' : 'text-red-500'}`}>/ 100</span>
+    <div className="space-y-6">
+      <div className="relative w-32 h-32 mx-auto">
+        <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" />
+          <circle cx="60" cy="60" r="54" fill="none" stroke={passed ? '#34d399' : '#ef4444'} strokeWidth="6"
+            strokeDasharray={`${(result.overallScore/100)*339.3} 339.3`} strokeLinecap="round" />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className={`text-3xl font-bold ${passed ? 'text-emerald-400' : 'text-red-400'}`}>{result.overallScore}</span>
+          <span className="text-white/30 text-xs">/100</span>
         </div>
       </div>
-
-      {/* Status message */}
       {passed ? (
-        <div className="flex items-center justify-center gap-2 text-sacred-400">
-          <CheckCircle2 className="w-5 h-5" />
-          <span className="font-semibold">Sourate validée !</span>
-          <Star className="w-5 h-5 text-gold-400 fill-gold-400 animate-star-pop" />
+        <div className="flex items-center justify-center gap-2 text-emerald-400">
+          <CheckCircle2 className="w-5 h-5" /><span className="font-semibold">Sourate validée !</span>
+          <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
         </div>
       ) : (
         <div className="flex items-center justify-center gap-2 text-red-400">
-          <XCircle className="w-5 h-5" />
-          <span className="font-semibold">Pas encore... Continue !</span>
+          <XCircle className="w-5 h-5" /><span className="font-semibold">Continue, tu y es presque !</span>
         </div>
       )}
-
-      {/* Score breakdown */}
-      <div className="card-sacred p-4 text-left space-y-3">
-        <ScoreRow label="Exactitude du texte" value={result.accuracy} />
-        <ScoreRow label="Tajwid" value={result.tajwidAnalysis.score} />
-        <div className="divider-geometric !my-2" />
-        <ScoreRow label="Score global" value={result.overallScore} bold />
+      <div className="card-v2 p-4 text-left space-y-3">
+        <div className="flex justify-between"><span className="text-white/40 text-sm">Exactitude</span><span className="text-emerald-400 font-semibold">{result.accuracy}%</span></div>
+        <div className="flex justify-between"><span className="text-white/40 text-sm">Tajwid</span><span className="text-amber-400 font-semibold">{result.tajwidAnalysis.score}%</span></div>
+        <div className="h-px bg-white/5" />
+        <div className="flex justify-between"><span className="text-white font-medium text-sm">Global</span><span className="text-emerald-400 font-bold text-lg">{result.overallScore}%</span></div>
       </div>
-
-      {/* Actions */}
-      <div className="flex gap-3">
-        <button onClick={onRetry} className="flex-1 btn-primary">
-          Réessayer
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function ScoreRow({ label, value, bold = false }: { label: string; value: number; bold?: boolean }) {
-  const color = value >= 80 ? 'text-sacred-400' : value >= 60 ? 'text-gold-400' : 'text-red-400'
-  return (
-    <div className="flex justify-between items-center">
-      <span className={`text-sm ${bold ? 'text-white font-semibold' : 'text-night-300'}`}>{label}</span>
-      <span className={`font-semibold ${color} ${bold ? 'text-lg' : ''}`}>{value}%</span>
+      <button onClick={onRetry} className="btn-emerald w-full">Réessayer</button>
     </div>
   )
 }

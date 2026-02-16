@@ -5,106 +5,52 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --color-sacred: #1B7A4E;
-    --color-gold: #D4A843;
-    --color-night: #1A2332;
-    --color-night-deep: #0B1120;
-    --color-cream: #F5F0E8;
-  }
-
   body {
-    @apply bg-night-950 text-white font-body antialiased;
+    @apply text-white font-body antialiased;
+    background: linear-gradient(175deg, #111827 0%, #162032 40%, #131B2B 100%);
   }
-
-  /* Arabic text rendering */
   .arabic-text {
-    @apply font-arabic leading-[2.2] tracking-wide;
+    font-family: 'Amiri', 'Scheherazade New', serif;
     direction: rtl;
     font-feature-settings: 'liga' 1;
   }
-
   .arabic-verse {
-    @apply text-2xl md:text-3xl font-arabic leading-[2.5] text-gold-300;
+    font-family: 'Amiri', 'Scheherazade New', serif;
     direction: rtl;
+    @apply text-2xl md:text-3xl leading-[2.4] text-amber-200;
   }
 }
 
 @layer components {
-  .card-sacred {
-    @apply bg-night-800/60 backdrop-blur-sm border border-sacred-700/20 rounded-2xl;
+  .card-v2 {
+    @apply bg-white/[0.03] backdrop-blur-sm border border-white/[0.05] rounded-2xl;
   }
-
-  .btn-primary {
-    @apply bg-sacred-500 hover:bg-sacred-600 text-white font-semibold 
-           py-3 px-6 rounded-xl transition-all duration-300
-           shadow-lg shadow-sacred-500/20 hover:shadow-sacred-500/40
-           active:scale-[0.98];
+  .card-v2-active {
+    @apply bg-emerald-500/[0.07] border border-emerald-500/20;
+    box-shadow: 0 0 30px rgba(52, 211, 153, 0.06);
   }
-
   .btn-gold {
-    @apply bg-gold-400 hover:bg-gold-500 text-night-900 font-semibold
-           py-3 px-6 rounded-xl transition-all duration-300
-           shadow-lg shadow-gold-400/20 hover:shadow-gold-400/40
-           active:scale-[0.98];
+    background: linear-gradient(135deg, #D4A843 0%, #B8860B 100%);
+    color: #1a1a2e;
+    box-shadow: 0 0 30px rgba(212, 168, 67, 0.2);
+    @apply font-semibold py-3 px-6 rounded-xl transition-all active:scale-[0.98];
   }
-
-  .glow-border {
-    @apply border border-sacred-500/30;
-    box-shadow: 0 0 15px rgba(27, 122, 78, 0.15), inset 0 0 15px rgba(27, 122, 78, 0.05);
-  }
-
-  .progress-bar {
-    @apply h-2 rounded-full bg-night-700 overflow-hidden;
-  }
-
-  .progress-fill {
-    @apply h-full rounded-full bg-gradient-to-r from-sacred-500 to-sacred-400 transition-all duration-700;
-  }
-
-  .juz-locked {
-    @apply opacity-40 grayscale pointer-events-none;
-  }
-
-  .juz-active {
-    @apply opacity-100 glow-border;
-  }
-
-  .juz-completed {
-    @apply opacity-100 border-gold-400/50;
-    box-shadow: 0 0 20px rgba(212, 168, 67, 0.2);
-  }
-
-  .divider-geometric {
-    @apply relative h-px bg-gradient-to-r from-transparent via-sacred-500/50 to-transparent my-8;
+  .btn-emerald {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    box-shadow: 0 0 20px rgba(5, 150, 105, 0.25);
+    @apply text-white font-semibold py-3 px-6 rounded-xl transition-all active:scale-[0.98];
   }
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
+@keyframes audioBar {
+  0%, 100% { height: 20%; }
+  50% { height: 90%; }
 }
-::-webkit-scrollbar-track {
-  @apply bg-night-900;
-}
-::-webkit-scrollbar-thumb {
-  @apply bg-sacred-700/50 rounded-full;
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.2); }
+  50% { box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); }
 }
 
-/* Audio wave animation */
-.audio-wave {
-  @apply flex items-end gap-[2px] h-8;
-}
-.audio-wave span {
-  @apply w-1 bg-sacred-400 rounded-full;
-  animation: audioWave 1.2s ease-in-out infinite;
-}
-.audio-wave span:nth-child(2) { animation-delay: 0.1s; }
-.audio-wave span:nth-child(3) { animation-delay: 0.2s; }
-.audio-wave span:nth-child(4) { animation-delay: 0.3s; }
-.audio-wave span:nth-child(5) { animation-delay: 0.4s; }
-
-@keyframes audioWave {
-  0%, 100% { height: 8px; }
-  50% { height: 28px; }
-}
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { @apply bg-white/10 rounded-full; }
