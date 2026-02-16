@@ -1,9 +1,11 @@
 /**
  * Quran Data Service
- * Source: api.quran.com v4
+ * Main: api.quran.com v4 (text + translation FR + audio)
+ * Transliteration: api.alquran.cloud (edition en.transliteration)
  */
 
 const QURAN_API = 'https://api.quran.com/api/v4'
+const ALQURAN_API = 'https://api.alquran.cloud/v1'
 
 export interface Surah {
   id: number
@@ -26,7 +28,6 @@ export interface Verse {
   page_number: number
 }
 
-// 30 Juz — 2 premieres sourates de chaque Juz (toutes debloquees)
 export const JUZ_SURAH_MAP: Record<number, number[]> = {
   1: [1, 2], 2: [2, 3], 3: [3, 4], 4: [4, 5], 5: [4, 5],
   6: [5, 6], 7: [6, 7], 8: [7, 8], 9: [7, 8], 10: [8, 9],
@@ -45,7 +46,6 @@ export const RECITERS = [
   { id: '12', name: 'Yasser Ad-Dossari', name_ar: 'ياسر الدوسري', style: 'Emouvant et spirituel' },
 ]
 
-// Strip HTML tags from translations (fix <sup foot_note=xxx>...</sup>)
 function stripHtml(text: string): string {
   return text.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
 }
@@ -64,23 +64,39 @@ export async function fetchSurahs(): Promise<Surah[]> {
   }))
 }
 
+async function fetchTransliteration(surahId: number): Promise<Map<number, string>> {
+  const map = new Map<number, string>()
+  try {
+    const res = await fetch(`${ALQURAN_API}/surah/${surahId}/en.transliteration`)
+    if (!res.ok) return map
+    const data = await res.json()
+    const ayahs = data?.data?.ayahs
+    if (Array.isArray(ayahs)) {
+      ayahs.forEach((a: any) => {
+        map.set(a.numberInSurah, a.text || '')
+      })
+    }
+  } catch {
+    // Silently fail — phonetic will just be empty
+  }
+  return map
+}
+
 export async function fetchVerses(
   surahId: number,
   reciterId: string = '7'
 ): Promise<Verse[]> {
-  // Fetch text, translation FR, transliteration EN, and audio in parallel
-  const [textRes, transRes, translitRes, audioRes] = await Promise.all([
+  const [textRes, frRes, translitMap, audioRes] = await Promise.all([
     fetch(`${QURAN_API}/verses/by_chapter/${surahId}?language=fr&words=false&per_page=300&fields=text_uthmani`),
     fetch(`${QURAN_API}/verses/by_chapter/${surahId}?language=fr&per_page=300&translations=136`),
-    fetch(`${QURAN_API}/verses/by_chapter/${surahId}?language=en&per_page=300&fields=text_transliteration`),
+    fetchTransliteration(surahId),
     fetch(`${QURAN_API}/recitations/${reciterId}/by_chapter/${surahId}`),
   ])
 
   if (!textRes.ok) throw new Error('Failed to fetch verses')
 
   const textData = await textRes.json()
-  const transData = await transRes.json()
-  const translitData = await translitRes.json()
+  const frData = await frRes.json()
   const audioData = await audioRes.json()
 
   const audioMap = new Map<number, string>()
@@ -90,16 +106,15 @@ export async function fetchVerses(
   })
 
   return textData.verses.map((v: any, i: number) => {
-    const rawTranslation = transData.verses?.[i]?.translations?.[0]?.text || ''
-    const transliteration = translitData.verses?.[i]?.text_transliteration || ''
+    const rawFr = frData.verses?.[i]?.translations?.[0]?.text || ''
 
     return {
       id: v.id,
       verse_number: v.verse_number,
       verse_key: v.verse_key,
       text_uthmani: v.text_uthmani,
-      text_transliteration: transliteration,
-      translation_fr: stripHtml(rawTranslation),
+      text_transliteration: translitMap.get(v.verse_number) || '',
+      translation_fr: stripHtml(rawFr),
       audio_url: audioMap.get(v.verse_number) || '',
       juz_number: v.juz_number,
       page_number: v.page_number,
