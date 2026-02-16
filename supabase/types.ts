@@ -47,6 +47,8 @@ export interface Database {
           is_validated?: boolean
           best_score?: number
           attempts?: number
+          last_attempt_at?: string | null
+          validated_at?: string | null
         }
         Update: {
           is_validated?: boolean
@@ -73,6 +75,7 @@ export interface Database {
           is_unlocked?: boolean
           is_completed?: boolean
           trophy_earned?: boolean
+          completed_at?: string | null
         }
         Update: {
           is_unlocked?: boolean
