@@ -5,7 +5,7 @@ import { useUIStore, useAuthStore, useProgressStore } from '@/lib/store'
 import { fetchVerses, type Verse } from '@/services/quran-api'
 import {
   ArrowLeft, Play, Pause, SkipForward, SkipBack, Mic, MicOff,
-  Star, CheckCircle2, XCircle, Loader2, BookOpen, Bookmark, BookmarkCheck,
+  Star, CheckCircle2, XCircle, Loader2, BookOpen, Bookmark, BookmarkCheck, Check,
 } from 'lucide-react'
 
 export default function SurahPage() {
@@ -33,6 +33,7 @@ export default function SurahPage() {
       .then(d => { setVerses(d); const bm = bookmarks[surahId]; setCurrentVerse(bm || (d.length > 0 ? 1 : null)) })
       .catch(console.error).finally(() => setLoading(false))
     return () => { setPlaying(false); setCurrentVerse(null) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surahId, preferredReciter])
 
   useEffect(() => {
@@ -41,6 +42,7 @@ export default function SurahPage() {
     audio.addEventListener('error', () => setPlaying(false))
     audioRef.current = audio
     return () => { audio.removeEventListener('ended', onEnded); audio.pause(); audio.src = '' }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function onEnded() {
