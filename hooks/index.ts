@@ -1,5 +1,4 @@
 /**
- * Custom hooks — a enrichir
+ * Custom hooks — re-exports
  */
-
-export { useUserStore, useProgressStore, useQuranStore } from '@/lib/store'
+export { useAuthStore, useProgressStore, useUIStore } from '@/lib/store'
