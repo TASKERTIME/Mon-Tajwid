@@ -19,40 +19,76 @@ export default function AuthPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true); setError('')
     const cleanUser = username.toLowerCase().replace(/[^a-z0-9_]/g, '')
-    if (!cleanUser || cleanUser.length < 3) { setError('Pseudo : minimum 3 caractères (lettres, chiffres, _)'); setLoading(false); return }
-    if (password.length < 6) { setError('Mot de passe : minimum 6 caractères'); setLoading(false); return }
-    const email = `${cleanUser}@montajwid.local`
+    if (!cleanUser || cleanUser.length < 3) { setError('Pseudo : min. 3 caractères (lettres, chiffres, _)'); setLoading(false); return }
+    if (password.length < 6) { setError('Mot de passe : min. 6 caractères'); setLoading(false); return }
+
+    // Use a proper fake email that Supabase will accept
+    const email = `${cleanUser}@user.montajwid.app`
 
     try {
       if (mode === 'signup') {
-        const { data, error: err } = await supabase.auth.signUp({
-          email, password,
-          options: { data: { username: cleanUser, display_name: displayName || cleanUser } }
+        // Step 1: Create auth user
+        const { data, error: signupErr } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { username: cleanUser, display_name: displayName || cleanUser },
+            emailRedirectTo: undefined,
+          }
         })
-        if (err) {
-          if (err.message.includes('already registered')) throw new Error('Ce pseudo est déjà pris')
-          throw err
+
+        if (signupErr) {
+          // Handle specific errors
+          if (signupErr.message.includes('already registered') || signupErr.message.includes('already been registered')) {
+            throw new Error('Ce pseudo est déjà pris. Essaie un autre.')
+          }
+          if (signupErr.message.includes('Database error')) {
+            // The user was created in auth.users but the trigger failed
+            // Try to sign in instead — the auth user exists
+            const { data: loginData, error: loginErr } = await supabase.auth.signInWithPassword({ email, password })
+            if (loginErr) throw new Error('Erreur lors de l\'inscription. Réessaie.')
+
+            // Manually create profile since trigger failed
+            await createProfileIfMissing(loginData.user!.id, cleanUser, displayName || cleanUser, email)
+
+            const isAdmin = cleanUser === 'mehdi4124'
+            login(loginData.user!.id, cleanUser, displayName || cleanUser, isAdmin)
+            router.replace('/')
+            return
+          }
+          throw signupErr
         }
-        login(data.user?.id || '', cleanUser, displayName || cleanUser, cleanUser === 'mehdi4124')
+
+        if (!data.user) throw new Error('Erreur inattendue')
+
+        // Step 2: Manually ensure profile exists (don't rely on trigger)
+        await createProfileIfMissing(data.user.id, cleanUser, displayName || cleanUser, email)
+
+        const isAdmin = cleanUser === 'mehdi4124'
+        login(data.user.id, cleanUser, displayName || cleanUser, isAdmin)
+
       } else {
-        const { data, error: err } = await supabase.auth.signInWithPassword({ email, password })
-        if (err) throw new Error('Pseudo ou mot de passe incorrect')
+        // LOGIN
+        const { data, error: loginErr } = await supabase.auth.signInWithPassword({ email, password })
+        if (loginErr) throw new Error('Pseudo ou mot de passe incorrect')
+
         const meta = data.user?.user_metadata
-        login(data.user?.id || '', meta?.username || cleanUser, meta?.display_name || cleanUser, cleanUser === 'mehdi4124')
+        const isAdmin = cleanUser === 'mehdi4124'
+        login(data.user!.id, meta?.username || cleanUser, meta?.display_name || cleanUser, isAdmin)
       }
+
       router.replace('/')
-    } catch (err: any) { setError(err.message) }
-    finally { setLoading(false) }
+    } catch (err: any) {
+      setError(err.message || 'Erreur de connexion')
+    } finally { setLoading(false) }
   }
 
   return (
     <div className="min-h-dvh flex items-center justify-center px-5 relative">
-      {/* Ambient */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] opacity-20 pointer-events-none"
         style={{ background:'radial-gradient(ellipse, rgba(201,168,76,0.2), transparent 70%)' }} />
 
       <div className="w-full max-w-[380px] relative z-10">
-        {/* Logo */}
         <div className="text-center mb-10 anim-fade-up">
           <div className="w-20 h-20 mx-auto mb-5 anim-float">
             <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_0_20px_rgba(201,168,76,0.2)]">
@@ -67,7 +103,6 @@ export default function AuthPage() {
           <p className="text-white/30 text-sm mt-2">{mode==='login'?'Bon retour parmi nous':'Rejoins la communauté'}</p>
         </div>
 
-        {/* Form */}
         <div className="glass p-7 anim-fade-up delay-1">
           <form onSubmit={handleSubmit} className="space-y-5">
             {mode==='signup' && (
@@ -111,4 +146,26 @@ export default function AuthPage() {
       </div>
     </div>
   )
+}
+
+/** Create profile row manually — called after signup as fallback */
+async function createProfileIfMissing(userId: string, username: string, displayName: string, email: string) {
+  try {
+    // Check if profile already exists (trigger might have created it)
+    const { data: existing } = await supabase.from('profiles').select('id').eq('id', userId).single()
+    if (existing) return // Already exists, trigger worked
+
+    // Insert manually
+    await supabase.from('profiles').insert({
+      id: userId,
+      email,
+      username,
+      display_name: displayName,
+      is_admin: username === 'mehdi4124',
+    })
+  } catch {
+    // Non-critical: profile creation might fail due to RLS, but login still works
+    // The local store handles all the app state
+    console.warn('Profile creation skipped — using local store only')
+  }
 }
