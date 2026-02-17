@@ -1,96 +1,106 @@
-const QURAN_API = 'https://api.quran.com/api/v4'
-const ALQURAN_API = 'https://api.alquran.cloud/v1'
+// Mon Tajwid — Quran API (quran.com v4 + alquran.cloud)
 
 export interface Surah {
-  id: number
-  name_arabic: string
-  name_simple: string
-  name_translation: string
-  revelation_place: string
-  verses_count: number
+  id: number; name_simple: string; name_arabic: string
+  verses_count: number; revelation_place: string
 }
 
 export interface Verse {
-  id: number
-  verse_number: number
-  verse_key: string
-  text_uthmani: string
-  text_transliteration: string
-  translation_fr: string
-  audio_url: string
-  juz_number: number
-  page_number: number
+  verse_number: number; text_uthmani: string
+  text_transliteration?: string; translation_fr?: string; audio_url?: string
 }
 
+// Recitation IDs verified on quran.com v4 /recitations endpoint
+// These are for VERSE-BY-VERSE audio (not chapter recitations)
 export const RECITERS = [
-  { id: '7', name: 'Mishary Rashid Alafasy', name_ar: 'مشاري العفاسي', style: 'Murattal lent et mélodieux' },
-  { id: '2', name: 'Abdul Basit Abdul Samad', name_ar: 'عبد الباسط عبد الصمد', style: 'Murattal - idéal pour apprendre' },
-  { id: '5', name: 'Abu Bakr al-Shatri', name_ar: 'أبو بكر الشاطري', style: 'Récitation de Makkah' },
-  { id: '6', name: 'Maher Al Muaiqly', name_ar: 'ماهر المعيقلي', style: 'Imam Masjid al-Haram' },
-  { id: '10', name: 'Saad Al-Ghamdi', name_ar: 'سعد الغامدي', style: 'Clair et distinct' },
-  { id: '12', name: 'Yasser Ad-Dossari', name_ar: 'ياسر الدوسري', style: 'Émouvant et spirituel' },
+  { id:'1',  name:'Abdul Basit', style:'Mujawwad (tajwid)' },
+  { id:'2',  name:'Abdul Basit', style:'Murattal' },
+  { id:'3',  name:'Abdur-Rahman as-Sudais', style:'Murattal' },
+  { id:'4',  name:'Abu Bakr al-Shatri', style:'Murattal' },
+  { id:'5',  name:'Hani ar-Rifai', style:'Murattal' },
+  { id:'6',  name:'Mahmoud Khalil al-Hussary', style:'Murattal' },
+  { id:'7',  name:'Mishari Rashid al-Afasy', style:'Murattal' },
+  { id:'12', name:'Saad al-Ghamdi', style:'Murattal' },
 ]
 
-function stripHtml(text: string): string {
-  return text.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
-}
+const BASE = 'https://api.quran.com/api/v4'
 
 export async function fetchSurahs(): Promise<Surah[]> {
-  const res = await fetch(`${QURAN_API}/chapters?language=fr`)
-  if (!res.ok) throw new Error('Failed to fetch surahs')
-  const data = await res.json()
-  return data.chapters.map((ch: any) => ({
-    id: ch.id,
-    name_arabic: ch.name_arabic,
-    name_simple: ch.name_simple,
-    name_translation: ch.translated_name?.name || '',
-    revelation_place: ch.revelation_place,
-    verses_count: ch.verses_count,
-  }))
-}
-
-async function fetchTransliteration(surahId: number): Promise<Map<number, string>> {
-  const map = new Map<number, string>()
   try {
-    const res = await fetch(`${ALQURAN_API}/surah/${surahId}/en.transliteration`)
-    if (!res.ok) return map
+    const res = await fetch(`${BASE}/chapters?language=fr`)
     const data = await res.json()
-    const ayahs = data?.data?.ayahs
-    if (Array.isArray(ayahs)) {
-      ayahs.forEach((a: any) => map.set(a.numberInSurah, a.text || ''))
-    }
-  } catch { /* silently fail */ }
-  return map
+    return (data.chapters || []).map((c: any) => ({
+      id: c.id, name_simple: c.name_simple, name_arabic: c.name_arabic,
+      verses_count: c.verses_count, revelation_place: c.revelation_place,
+    }))
+  } catch (e) { console.error('fetchSurahs error', e); return [] }
 }
 
 export async function fetchVerses(surahId: number, reciterId: string = '7'): Promise<Verse[]> {
-  const [textRes, frRes, translitMap, audioRes] = await Promise.all([
-    fetch(`${QURAN_API}/verses/by_chapter/${surahId}?language=fr&words=false&per_page=300&fields=text_uthmani`),
-    fetch(`${QURAN_API}/verses/by_chapter/${surahId}?language=fr&per_page=300&translations=136`),
-    fetchTransliteration(surahId),
-    fetch(`${QURAN_API}/recitations/${reciterId}/by_chapter/${surahId}`),
-  ])
-  if (!textRes.ok) throw new Error('Failed to fetch verses')
+  try {
+    // 1. Arabic text + audio (all pages)
+    const textRes = await fetch(
+      `${BASE}/verses/by_chapter/${surahId}?language=fr&fields=text_uthmani&per_page=300&recitation_id=${reciterId}`
+    )
+    const textData = await textRes.json()
+    const verses = textData.verses || []
 
-  const textData = await textRes.json()
-  const frData = await frRes.json()
-  const audioData = await audioRes.json()
+    // If we got less than total, fetch remaining pages
+    const total = textData.pagination?.total_records || verses.length
+    if (verses.length < total) {
+      let page = 2
+      while (verses.length < total && page <= 10) {
+        const more = await fetch(`${BASE}/verses/by_chapter/${surahId}?language=fr&fields=text_uthmani&per_page=300&recitation_id=${reciterId}&page=${page}`)
+        const moreData = await more.json()
+        if (!moreData.verses?.length) break
+        verses.push(...moreData.verses)
+        page++
+      }
+    }
 
-  const audioMap = new Map<number, string>()
-  audioData.audio_files?.forEach((af: any) => {
-    const vn = af.verse_key ? parseInt(af.verse_key.split(':')[1]) : af.verse_number
-    audioMap.set(vn, `https://audio.qurancdn.com/${af.url}`)
-  })
+    // 2. French translation (Hamidullah)
+    let translations: Record<number, string> = {}
+    try {
+      const trRes = await fetch(`${BASE}/verses/by_chapter/${surahId}?language=fr&translations=136&per_page=300&fields=text_uthmani`)
+      const trData = await trRes.json()
+      for (const v of (trData.verses || [])) {
+        if (v.translations?.[0]?.text) {
+          translations[v.verse_number] = v.translations[0].text.replace(/<[^>]*>/g, '')
+        }
+      }
+    } catch {}
 
-  return textData.verses.map((v: any, i: number) => ({
-    id: v.id,
-    verse_number: v.verse_number,
-    verse_key: v.verse_key,
-    text_uthmani: v.text_uthmani,
-    text_transliteration: translitMap.get(v.verse_number) || '',
-    translation_fr: stripHtml(frData.verses?.[i]?.translations?.[0]?.text || ''),
-    audio_url: audioMap.get(v.verse_number) || '',
-    juz_number: v.juz_number,
-    page_number: v.page_number,
-  }))
+    // 3. Transliteration from alquran.cloud
+    let translit: Record<number, string> = {}
+    try {
+      const tlRes = await fetch(`https://api.alquran.cloud/v1/surah/${surahId}/en.transliteration`)
+      const tlData = await tlRes.json()
+      if (tlData.data?.ayahs) {
+        for (const a of tlData.data.ayahs) {
+          translit[a.numberInSurah] = a.text
+        }
+      }
+    } catch {}
+
+    // 4. Audio URLs from recitations endpoint
+    let audioUrls: Record<number, string> = {}
+    try {
+      const audioRes = await fetch(`${BASE}/recitations/${reciterId}/by_chapter/${surahId}`)
+      const audioData = await audioRes.json()
+      for (const af of (audioData.audio_files || [])) {
+        const vn = af.verse_key?.split(':')?.[1]
+        if (vn && af.url) {
+          audioUrls[parseInt(vn)] = af.url.startsWith('http') ? af.url : `https://audio.qurancdn.com/${af.url}`
+        }
+      }
+    } catch {}
+
+    return verses.map((v: any) => ({
+      verse_number: v.verse_number,
+      text_uthmani: v.text_uthmani || '',
+      text_transliteration: translit[v.verse_number] || undefined,
+      translation_fr: translations[v.verse_number] || undefined,
+      audio_url: audioUrls[v.verse_number] || undefined,
+    }))
+  } catch (e) { console.error('fetchVerses error', e); return [] }
 }

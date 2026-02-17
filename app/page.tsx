@@ -9,7 +9,7 @@ import {
   Star, BookOpen, Settings, ChevronRight, Flame, Check, Volume2,
   Moon, Loader2, Search, X, Swords, BookMarked, Share2,
   LogOut, Shield, Bookmark, Download, Heart, Copy, CheckCircle2,
-  ArrowRight, Sparkles, Clock, Trophy, Users,
+  ArrowRight, Sparkles, Clock, Trophy, Users, Info, MessageCircle, Mic,
 } from 'lucide-react'
 
 /* ===== CONTENT DATA ===== */
@@ -24,29 +24,29 @@ const REMINDERS = [
 
 const DUAS = [
   { cat:'Matin', icon:'🌅', items:[
-    { ar:'أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ وَالْحَمْدُ لِلَّهِ', fr:'Nous voilà au matin et le royaume appartient à Allah.', n:'1x', src:'Citadelle 71' },
-    { ar:'اللَّهُمَّ بِكَ أَصْبَحْنَا وَبِكَ أَمْسَيْنَا وَبِكَ نَحْيَا وَبِكَ نَمُوتُ وَإِلَيْكَ النُّشُورُ', fr:'Ô Allah, par Toi nous nous retrouvons au matin et au soir, par Toi nous vivons et mourons.', n:'1x', src:'Citadelle 72' },
-    { ar:'سُبْحَانَ اللَّهِ وَبِحَمْدِهِ', fr:'Gloire et louange à Allah.', n:'100x', src:'Citadelle 82' },
+    { ar:'أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ وَالْحَمْدُ لِلَّهِ', ph:'Asbahna wa asbahal-mulku lillahi wal-hamdulillah', fr:'Nous voilà au matin et le royaume appartient à Allah.', n:'1x', src:'Citadelle 71' },
+    { ar:'اللَّهُمَّ بِكَ أَصْبَحْنَا وَبِكَ أَمْسَيْنَا وَبِكَ نَحْيَا وَبِكَ نَمُوتُ وَإِلَيْكَ النُّشُورُ', ph:'Allahumma bika asbahna wa bika amsayna wa bika nahya wa bika namutu wa ilaykan-nushur', fr:'Ô Allah, par Toi nous nous retrouvons au matin et au soir, par Toi nous vivons et mourons.', n:'1x', src:'Citadelle 72' },
+    { ar:'سُبْحَانَ اللَّهِ وَبِحَمْدِهِ', ph:'SubhanAllahi wa bihamdihi', fr:'Gloire et louange à Allah.', n:'100x', src:'Citadelle 82' },
   ]},
   { cat:'Soir', icon:'🌙', items:[
-    { ar:'أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ', fr:'Nous voilà au soir et le royaume appartient à Allah.', n:'1x', src:'Citadelle 73' },
-    { ar:'أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ', fr:'Je cherche protection par les paroles parfaites d\'Allah contre le mal de ce qu\'Il a créé.', n:'3x', src:'Citadelle 85' },
+    { ar:'أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ', ph:'Amsayna wa amsal-mulku lillah', fr:'Nous voilà au soir et le royaume appartient à Allah.', n:'1x', src:'Citadelle 73' },
+    { ar:'أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ', ph:"A'udhu bikalimati-llahit-tammati min sharri ma khalaq", fr:"Je cherche protection par les paroles parfaites d'Allah contre le mal de ce qu'Il a créé.", n:'3x', src:'Citadelle 85' },
   ]},
   { cat:'Après la prière', icon:'🕌', items:[
-    { ar:'أَسْتَغْفِرُ ٱللَّهَ', fr:'Je demande pardon à Allah.', n:'3x', src:'Citadelle 63' },
-    { ar:'سُبْحَانَ ٱللَّهِ', fr:'Gloire à Allah.', n:'33x', src:'Citadelle 64' },
-    { ar:'ٱلْحَمْدُ لِلَّهِ', fr:'Louange à Allah.', n:'33x', src:'Citadelle 64' },
-    { ar:'ٱللَّهُ أَكْبَرُ', fr:'Allah est le Plus Grand.', n:'33x', src:'Citadelle 64' },
-    { ar:'لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ', fr:'Pas de divinité hormis Allah, Unique, sans associé.', n:'1x', src:'Citadelle 65' },
+    { ar:'أَسْتَغْفِرُ ٱللَّهَ', ph:'Astaghfirullah', fr:'Je demande pardon à Allah.', n:'3x', src:'Citadelle 63' },
+    { ar:'سُبْحَانَ ٱللَّهِ', ph:'SubhanAllah', fr:'Gloire à Allah.', n:'33x', src:'Citadelle 64' },
+    { ar:'ٱلْحَمْدُ لِلَّهِ', ph:'Alhamdulillah', fr:'Louange à Allah.', n:'33x', src:'Citadelle 64' },
+    { ar:'ٱللَّهُ أَكْبَرُ', ph:'Allahu Akbar', fr:'Allah est le Plus Grand.', n:'33x', src:'Citadelle 64' },
+    { ar:'لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ', ph:'La ilaha illallahu wahdahu la sharika lah', fr:'Pas de divinité hormis Allah, Unique, sans associé.', n:'1x', src:'Citadelle 65' },
   ]},
   { cat:'Avant de dormir', icon:'😴', items:[
-    { ar:'بِاسْمِكَ اللَّهُمَّ أَمُوتُ وَأَحْيَا', fr:'En Ton nom, Ô Allah, je meurs et je vis.', n:'1x', src:'Citadelle 100' },
-    { ar:'اللَّهُمَّ قِنِي عَذَابَكَ يَوْمَ تَبْعَثُ عِبَادَكَ', fr:'Ô Allah, préserve-moi de Ton châtiment le jour où Tu ressusciteras Tes serviteurs.', n:'1x', src:'Citadelle 101' },
+    { ar:'بِاسْمِكَ اللَّهُمَّ أَمُوتُ وَأَحْيَا', ph:'Bismika Allahumma amutu wa ahya', fr:'En Ton nom, Ô Allah, je meurs et je vis.', n:'1x', src:'Citadelle 100' },
+    { ar:'اللَّهُمَّ قِنِي عَذَابَكَ يَوْمَ تَبْعَثُ عِبَادَكَ', ph:"Allahumma qini 'adhabaka yawma tab'athu 'ibadak", fr:"Ô Allah, préserve-moi de Ton châtiment le jour où Tu ressusciteras Tes serviteurs.", n:'1x', src:'Citadelle 101' },
   ]},
   { cat:'Quotidien', icon:'📿', items:[
-    { ar:'بِسْمِ اللَّهِ تَوَكَّلْتُ عَلَى اللَّهِ وَلَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ', fr:'Au nom d\'Allah, je place ma confiance en Allah.', n:'en sortant', src:'Citadelle 46' },
-    { ar:'بِسْمِ اللَّهِ', fr:'Au nom d\'Allah.', n:'en mangeant', src:'Citadelle 52' },
-    { ar:'الْحَمْدُ لِلَّهِ الَّذِي أَطْعَمَنِي هَذَا وَرَزَقَنِيهِ', fr:'Louange à Allah qui m\'a nourri de ceci et me l\'a accordé.', n:'après manger', src:'Citadelle 54' },
+    { ar:'بِسْمِ اللَّهِ تَوَكَّلْتُ عَلَى اللَّهِ وَلَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ', ph:"Bismillahi tawakkaltu 'alallahi wa la hawla wa la quwwata illa billah", fr:"Au nom d'Allah, je place ma confiance en Allah.", n:'en sortant', src:'Citadelle 46' },
+    { ar:'بِسْمِ اللَّهِ', ph:'Bismillah', fr:"Au nom d'Allah.", n:'en mangeant', src:'Citadelle 52' },
+    { ar:'الْحَمْدُ لِلَّهِ الَّذِي أَطْعَمَنِي هَذَا وَرَزَقَنِيهِ', ph:"Alhamdulillahilladhi at'amani hadha wa razaqanihi", fr:"Louange à Allah qui m'a nourri de ceci et me l'a accordé.", n:'après manger', src:'Citadelle 54' },
   ]},
 ]
 
@@ -64,9 +64,49 @@ function App() {
   const progress = useProgressStore()
   const router = useRouter()
   const stars = progress.getTotalStars()
+  const [showOnboarding, setShowOnboarding] = useState(false)
+
+  useEffect(() => {
+    const seen = localStorage.getItem('mtj-onboarding')
+    if (!seen) setShowOnboarding(true)
+  }, [])
+
+  const dismissOnboarding = () => { setShowOnboarding(false); localStorage.setItem('mtj-onboarding', '1') }
 
   return (
     <div className="min-h-dvh relative">
+      {/* Onboarding modal */}
+      {showOnboarding && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-5 bg-black/60 backdrop-blur-sm anim-fade-in">
+          <div className="w-full max-w-[380px] glass p-7 anim-fade-up">
+            <div className="text-center mb-5">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#c9a84c]/10 flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-[#c9a84c]" />
+              </div>
+              <h2 className="heading text-xl font-bold text-white">Bienvenue sur Mon Tajwid</h2>
+              <p className="text-white/30 text-sm mt-2">Apprends le Coran avec le Tajwid</p>
+            </div>
+            <div className="space-y-3 mb-6">
+              {[
+                { icon: BookOpen, text: 'Écoute et lis les 114 sourates avec traduction et phonétique' },
+                { icon: Mic, text: 'Récite et valide ta prononciation grâce à l\'IA' },
+                { icon: Swords, text: 'Défie tes amis sur une sourate — qui aura le meilleur score ?' },
+                { icon: Heart, text: 'Retrouve les invocations de la Citadelle du Musulman' },
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#34d399]/8 flex items-center justify-center shrink-0">
+                    <item.icon className="w-4 h-4 text-[#34d399]" />
+                  </div>
+                  <p className="text-white/45 text-sm leading-relaxed">{item.text}</p>
+                </div>
+              ))}
+            </div>
+            <button onClick={dismissOnboarding} className="btn-primary w-full">
+              Commencer<ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
       {showInstall && (
         <div className="glass-gold mx-4 mt-3 px-4 py-3 flex items-center gap-3 rounded-2xl">
           <Download className="w-4 h-4 text-[#c9a84c] shrink-0" />
@@ -220,6 +260,13 @@ function DuelsTab({ username }: { username: string|null }) {
   return <div>
     <header className="mb-6"><h1 className="heading text-2xl font-bold text-white">Duel</h1><p className="text-white/25 text-sm mt-1">Défie un ami sur une sourate</p></header>
 
+    {/* Islamic verse about competition */}
+    <div className="glass-gold p-4 mb-5 anim-fade-up">
+      <p className="arabic text-[#c9a84c]/80 text-[15px] leading-[2] text-right mb-2">وَفِي ذَٰلِكَ فَلْيَتَنَافَسِ ٱلْمُتَنَافِسُونَ</p>
+      <p className="text-[#c9a84c]/40 text-xs italic">Et que ceux qui veulent se surpasser rivalisent pour cela.</p>
+      <p className="text-[#c9a84c]/20 text-[10px] mt-1">Al-Mutaffifin 83:26</p>
+    </div>
+
     <div className="glass p-5 mb-5 anim-fade-up">
       <h3 className="text-white/30 text-[10px] font-semibold uppercase tracking-[0.2em] mb-4">Comment ça marche</h3>
       {[{n:'1',t:'Choisis une sourate',d:'Sélectionne le défi'},{n:'2',t:'Partage le lien',d:'Envoie à un ami'},{n:'3',t:'Récitez et comparez',d:'Le meilleur score gagne'}].map(s=>(
@@ -278,6 +325,7 @@ function DuasTab() {
                   <span className="text-white/10 text-[10px]">{d.src}</span>
                 </div>
                 <p className="arabic text-[#c9a84c]/75 text-[16px] leading-[2] text-right mb-2">{d.ar}</p>
+                <p className="text-[#34d399]/40 text-[13px] italic mb-1.5">{d.ph}</p>
                 <p className="text-white/25 text-xs leading-relaxed">{d.fr}</p>
               </div>
             ))}
