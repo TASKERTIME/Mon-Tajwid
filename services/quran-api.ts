@@ -10,8 +10,7 @@ export interface Verse {
   text_transliteration?: string; translation_fr?: string; audio_url?: string
 }
 
-// Recitation IDs verified on quran.com v4 /recitations endpoint
-// These are for VERSE-BY-VERSE audio (not chapter recitations)
+// Verified recitation IDs for verse-by-verse audio
 export const RECITERS = [
   { id:'1',  name:'Abdul Basit', style:'Mujawwad (tajwid)' },
   { id:'2',  name:'Abdul Basit', style:'Murattal' },
@@ -36,41 +35,53 @@ export async function fetchSurahs(): Promise<Surah[]> {
   } catch (e) { console.error('fetchSurahs error', e); return [] }
 }
 
+/** Fetch all pages of a paginated endpoint */
+async function fetchAllPages(url: string, key: string): Promise<any[]> {
+  let all: any[] = []
+  let page = 1
+  let totalPages = 1
+
+  while (page <= totalPages && page <= 20) {
+    const sep = url.includes('?') ? '&' : '?'
+    const res = await fetch(`${url}${sep}per_page=50&page=${page}`)
+    const data = await res.json()
+
+    const items = data[key] || []
+    all = all.concat(items)
+
+    if (data.pagination) {
+      totalPages = data.pagination.total_pages || 1
+    } else {
+      break // No pagination info = single page
+    }
+    page++
+  }
+  return all
+}
+
 export async function fetchVerses(surahId: number, reciterId: string = '7'): Promise<Verse[]> {
   try {
-    // 1. Arabic text + audio (all pages)
-    const textRes = await fetch(
-      `${BASE}/verses/by_chapter/${surahId}?language=fr&fields=text_uthmani&per_page=300&recitation_id=${reciterId}`
+    // 1. Fetch ALL verses (text) with pagination
+    const allVerses = await fetchAllPages(
+      `${BASE}/verses/by_chapter/${surahId}?language=fr&fields=text_uthmani`,
+      'verses'
     )
-    const textData = await textRes.json()
-    const verses = textData.verses || []
-
-    // If we got less than total, fetch remaining pages
-    const total = textData.pagination?.total_records || verses.length
-    if (verses.length < total) {
-      let page = 2
-      while (verses.length < total && page <= 10) {
-        const more = await fetch(`${BASE}/verses/by_chapter/${surahId}?language=fr&fields=text_uthmani&per_page=300&recitation_id=${reciterId}&page=${page}`)
-        const moreData = await more.json()
-        if (!moreData.verses?.length) break
-        verses.push(...moreData.verses)
-        page++
-      }
-    }
 
     // 2. French translation (Hamidullah)
     let translations: Record<number, string> = {}
     try {
-      const trRes = await fetch(`${BASE}/verses/by_chapter/${surahId}?language=fr&translations=136&per_page=300&fields=text_uthmani`)
-      const trData = await trRes.json()
-      for (const v of (trData.verses || [])) {
+      const trVerses = await fetchAllPages(
+        `${BASE}/verses/by_chapter/${surahId}?language=fr&translations=136&fields=text_uthmani`,
+        'verses'
+      )
+      for (const v of trVerses) {
         if (v.translations?.[0]?.text) {
           translations[v.verse_number] = v.translations[0].text.replace(/<[^>]*>/g, '')
         }
       }
     } catch {}
 
-    // 3. Transliteration from alquran.cloud
+    // 3. Transliteration from alquran.cloud (no pagination needed)
     let translit: Record<number, string> = {}
     try {
       const tlRes = await fetch(`https://api.alquran.cloud/v1/surah/${surahId}/en.transliteration`)
@@ -82,12 +93,15 @@ export async function fetchVerses(surahId: number, reciterId: string = '7'): Pro
       }
     } catch {}
 
-    // 4. Audio URLs from recitations endpoint
+    // 4. Fetch ALL audio files with pagination — THIS WAS THE BUG
+    // The API paginates at per_page=10 by default, so long surahs got cut off
     let audioUrls: Record<number, string> = {}
     try {
-      const audioRes = await fetch(`${BASE}/recitations/${reciterId}/by_chapter/${surahId}`)
-      const audioData = await audioRes.json()
-      for (const af of (audioData.audio_files || [])) {
+      const audioFiles = await fetchAllPages(
+        `${BASE}/recitations/${reciterId}/by_chapter/${surahId}`,
+        'audio_files'
+      )
+      for (const af of audioFiles) {
         const vn = af.verse_key?.split(':')?.[1]
         if (vn && af.url) {
           audioUrls[parseInt(vn)] = af.url.startsWith('http') ? af.url : `https://audio.qurancdn.com/${af.url}`
@@ -95,7 +109,7 @@ export async function fetchVerses(surahId: number, reciterId: string = '7'): Pro
       }
     } catch {}
 
-    return verses.map((v: any) => ({
+    return allVerses.map((v: any) => ({
       verse_number: v.verse_number,
       text_uthmani: v.text_uthmani || '',
       text_transliteration: translit[v.verse_number] || undefined,
