@@ -92,18 +92,14 @@ export default function SurahPage() {
       const fd=new FormData(); fd.append('audio',blob,'rec.webm'); fd.append('expected_text',expected); fd.append('duration',String(dur))
       const res=await fetch('/api/voice/analyze',{method:'POST',body:fd})
       const data=await res.json()
-      if (!res.ok) {
-        if (data.error === 'NO_API_KEY') throw { message: 'NO_API_KEY', status: 503 }
-        throw new Error(data.error || 'Erreur')
+      if (data.error) {
+        setResult({ error: data.error, detail: data.detail })
+        return
       }
+      if (!res.ok) throw new Error('Erreur serveur')
       finishResult(data)
     } catch (err: any) {
-      // Check if it's a NO_API_KEY error
-      if (err?.message === 'NO_API_KEY' || err?.status === 503) {
-        setResult({ error: 'NO_API_KEY' })
-      } else {
-        setResult({ error: 'ANALYSIS_FAILED' })
-      }
+      setResult({ error: 'NETWORK_ERROR' })
     } finally { setAnalyzing(false) }
   }
 
@@ -215,28 +211,55 @@ export default function SurahPage() {
 
           {result&&(
             <div className="text-left space-y-5 anim-fade-up">
-              {/* Error state — no API key */}
-              {result.error === 'NO_API_KEY' && (
+              {/* Error states */}
+              {result.error && (
                 <div className="text-center py-6">
-                  <div className="w-16 h-16 mx-auto rounded-full bg-[#c9a84c]/8 flex items-center justify-center mb-4">
-                    <Mic className="w-8 h-8 text-[#c9a84c]" />
-                  </div>
-                  <h3 className="heading text-lg font-bold text-white mb-2">Reconnaissance vocale IA</h3>
-                  <p className="text-white/30 text-sm leading-relaxed mb-2">La clé API OpenAI n&apos;est pas encore configurée. La reconnaissance vocale nécessite un compte OpenAI (Whisper) pour transcrire et analyser ta récitation.</p>
-                  <p className="text-white/15 text-xs mb-5">Ajoute la variable <code className="text-[#c9a84c]/50">OPENAI_API_KEY</code> dans Vercel pour activer cette fonctionnalité.</p>
-                  <button onClick={()=>setResult(null)} className="btn-primary text-sm">Compris</button>
-                </div>
-              )}
+                  {result.error === 'NO_API_KEY' && (<>
+                    <div className="w-16 h-16 mx-auto rounded-full bg-[#c9a84c]/8 flex items-center justify-center mb-4">
+                      <Mic className="w-8 h-8 text-[#c9a84c]" />
+                    </div>
+                    <h3 className="heading text-lg font-bold text-white mb-2">Clé API manquante</h3>
+                    <p className="text-white/30 text-sm leading-relaxed mb-5">La clé OpenAI n&apos;est pas configurée sur Vercel. Ajoute <code className="text-[#c9a84c]/50">OPENAI_API_KEY</code> dans les variables d&apos;environnement.</p>
+                  </>)}
 
-              {/* Error state — analysis failed */}
-              {result.error === 'ANALYSIS_FAILED' && (
-                <div className="text-center py-6">
-                  <div className="w-16 h-16 mx-auto rounded-full bg-red-500/8 flex items-center justify-center mb-4">
-                    <XCircle className="w-8 h-8 text-red-400" />
-                  </div>
-                  <h3 className="heading text-lg font-bold text-white mb-2">Erreur d&apos;analyse</h3>
-                  <p className="text-white/30 text-sm mb-5">Impossible d&apos;analyser ta récitation. Vérifie ton micro et réessaie.</p>
-                  <button onClick={()=>setResult(null)} className="btn-primary text-sm">Réessayer</button>
+                  {result.error === 'NO_CREDIT' && (<>
+                    <div className="w-16 h-16 mx-auto rounded-full bg-orange-500/8 flex items-center justify-center mb-4">
+                      <span className="text-3xl">💳</span>
+                    </div>
+                    <h3 className="heading text-lg font-bold text-white mb-2">Crédit OpenAI épuisé</h3>
+                    <p className="text-white/30 text-sm leading-relaxed mb-2">Ton compte OpenAI n&apos;a plus de crédit. La reconnaissance vocale nécessite un solde actif.</p>
+                    <p className="text-white/20 text-xs mb-5">Recharge sur <strong className="text-[#c9a84c]/50">platform.openai.com → Billing</strong> (5$ minimum, ~14h de transcription).</p>
+                  </>)}
+
+                  {result.error === 'INVALID_API_KEY' && (<>
+                    <div className="w-16 h-16 mx-auto rounded-full bg-red-500/8 flex items-center justify-center mb-4">
+                      <XCircle className="w-8 h-8 text-red-400" />
+                    </div>
+                    <h3 className="heading text-lg font-bold text-white mb-2">Clé API invalide</h3>
+                    <p className="text-white/30 text-sm leading-relaxed mb-5">La clé OpenAI configurée n&apos;est pas valide. Vérifie qu&apos;elle commence par <code className="text-[#c9a84c]/50">sk-</code> dans Vercel.</p>
+                  </>)}
+
+                  {result.error === 'EMPTY_AUDIO' && (<>
+                    <div className="w-16 h-16 mx-auto rounded-full bg-[#c9a84c]/8 flex items-center justify-center mb-4">
+                      <Mic className="w-8 h-8 text-[#c9a84c]" />
+                    </div>
+                    <h3 className="heading text-lg font-bold text-white mb-2">Aucune récitation détectée</h3>
+                    <p className="text-white/30 text-sm leading-relaxed mb-5">L&apos;IA n&apos;a pas détecté de voix. Rapproche-toi du micro et récite plus fort.</p>
+                  </>)}
+
+                  {(result.error === 'WHISPER_FAILED' || result.error === 'SERVER_ERROR' || result.error === 'NETWORK_ERROR') && (<>
+                    <div className="w-16 h-16 mx-auto rounded-full bg-red-500/8 flex items-center justify-center mb-4">
+                      <XCircle className="w-8 h-8 text-red-400" />
+                    </div>
+                    <h3 className="heading text-lg font-bold text-white mb-2">Erreur d&apos;analyse</h3>
+                    <p className="text-white/30 text-sm leading-relaxed mb-5">
+                      {result.error === 'NETWORK_ERROR' ? 'Vérifie ta connexion internet et réessaie.' : 'Impossible d\'analyser la récitation. Réessaie dans quelques instants.'}
+                    </p>
+                  </>)}
+
+                  <button onClick={()=>setResult(null)} className="btn-primary text-sm">
+                    {result.error === 'EMPTY_AUDIO' ? 'Réessayer' : 'Compris'}
+                  </button>
                 </div>
               )}
 
