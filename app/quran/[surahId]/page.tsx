@@ -91,26 +91,27 @@ export default function SurahPage() {
     try {
       const fd=new FormData(); fd.append('audio',blob,'rec.webm'); fd.append('expected_text',expected); fd.append('duration',String(dur))
       const res=await fetch('/api/voice/analyze',{method:'POST',body:fd})
-      if(!res.ok) throw new Error('API')
-      const data=await res.json(); finishResult(data)
-    } catch {
-      // Demo fallback
-      const s=Math.floor(55+Math.random()*40)
-      finishResult({
-        overallScore:s, accuracy:Math.min(s+8,100),
-        tajwidAnalysis:{ score:Math.max(s-10,0), details:[
-          {rule:'Ghunnah (nasalisation)',status:s>70?'correct':'manquant',tip:'Prolonge le son nasal de 2 temps sur noon/meem avec shadda.'},
-          {rule:'Madd naturel',status:s>65?'correct':'trop court',tip:'Allonge la voyelle longue de 2 temps.'},
-          {rule:'Ikhfa (dissimulation)',status:s>75?'correct':'absent',tip:'Le noon sakin doit être prononcé de façon nasale et légère devant les lettres d\'ikhfa.'},
-          {rule:'Qalqalah (rebond)',status:s>60?'correct':'faible',tip:'Les lettres ق ط ب ج د doivent rebondir clairement en position de sukun.'},
-        ]}
-      })
+      const data=await res.json()
+      if (!res.ok) {
+        if (data.error === 'NO_API_KEY') throw { message: 'NO_API_KEY', status: 503 }
+        throw new Error(data.error || 'Erreur')
+      }
+      finishResult(data)
+    } catch (err: any) {
+      // Check if it's a NO_API_KEY error
+      if (err?.message === 'NO_API_KEY' || err?.status === 503) {
+        setResult({ error: 'NO_API_KEY' })
+      } else {
+        setResult({ error: 'ANALYSIS_FAILED' })
+      }
     } finally { setAnalyzing(false) }
   }
 
   function finishResult(data:any) {
     setResult(data)
-    if (data.overallScore>=70) {
+    // Seuil minimum 30% pour ne pas induire en erreur
+    // Validation à 70%+
+    if (data.overallScore >= 70) {
       const prev=surahProgress[surahId]
       setSurahProgress(surahId,{validated:true,bestScore:Math.max(data.overallScore,prev?.bestScore||0),attempts:(prev?.attempts||0)+1})
       updateStreak(); removeBookmark(surahId)
@@ -214,23 +215,70 @@ export default function SurahPage() {
 
           {result&&(
             <div className="text-left space-y-5 anim-fade-up">
+              {/* Error state — no API key */}
+              {result.error === 'NO_API_KEY' && (
+                <div className="text-center py-6">
+                  <div className="w-16 h-16 mx-auto rounded-full bg-[#c9a84c]/8 flex items-center justify-center mb-4">
+                    <Mic className="w-8 h-8 text-[#c9a84c]" />
+                  </div>
+                  <h3 className="heading text-lg font-bold text-white mb-2">Reconnaissance vocale IA</h3>
+                  <p className="text-white/30 text-sm leading-relaxed mb-2">La clé API OpenAI n&apos;est pas encore configurée. La reconnaissance vocale nécessite un compte OpenAI (Whisper) pour transcrire et analyser ta récitation.</p>
+                  <p className="text-white/15 text-xs mb-5">Ajoute la variable <code className="text-[#c9a84c]/50">OPENAI_API_KEY</code> dans Vercel pour activer cette fonctionnalité.</p>
+                  <button onClick={()=>setResult(null)} className="btn-primary text-sm">Compris</button>
+                </div>
+              )}
+
+              {/* Error state — analysis failed */}
+              {result.error === 'ANALYSIS_FAILED' && (
+                <div className="text-center py-6">
+                  <div className="w-16 h-16 mx-auto rounded-full bg-red-500/8 flex items-center justify-center mb-4">
+                    <XCircle className="w-8 h-8 text-red-400" />
+                  </div>
+                  <h3 className="heading text-lg font-bold text-white mb-2">Erreur d&apos;analyse</h3>
+                  <p className="text-white/30 text-sm mb-5">Impossible d&apos;analyser ta récitation. Vérifie ton micro et réessaie.</p>
+                  <button onClick={()=>setResult(null)} className="btn-primary text-sm">Réessayer</button>
+                </div>
+              )}
+
+              {/* Real score result */}
+              {!result.error && <>
               {/* Score */}
               <div className="text-center">
                 <div className="relative w-32 h-32 mx-auto">
                   <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
                     <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="5"/>
-                    <circle cx="60" cy="60" r="54" fill="none" stroke={result.overallScore>=70?'#34d399':'#ef4444'} strokeWidth="5"
+                    <circle cx="60" cy="60" r="54" fill="none" stroke={result.overallScore>=70?'#34d399':result.overallScore>=30?'#c9a84c':'#ef4444'} strokeWidth="5"
                       strokeDasharray={`${(result.overallScore/100)*339.3} 339.3`} strokeLinecap="round"/>
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className={`text-4xl font-bold heading ${result.overallScore>=70?'text-[#34d399]':'text-red-400'}`}>{result.overallScore}</span>
+                    <span className={`text-4xl font-bold heading ${result.overallScore>=70?'text-[#34d399]':result.overallScore>=30?'text-[#c9a84c]':'text-red-400'}`}>{result.overallScore}</span>
                     <span className="text-white/15 text-xs">/100</span>
                   </div>
                 </div>
-                <div className={`flex items-center justify-center gap-2 mt-3 ${result.overallScore>=70?'text-[#34d399]':'text-red-400'}`}>
-                  {result.overallScore>=70?<><CheckCircle2 className="w-5 h-5"/><span className="font-semibold">Sourate validée !</span><Star className="w-5 h-5 text-[#c9a84c] fill-[#c9a84c]"/></>
-                    :<><XCircle className="w-5 h-5"/><span className="font-semibold">Continue, tu y es presque !</span></>}
-                </div>
+
+                {/* Score < 30% = rejet */}
+                {result.overallScore < 30 && (
+                  <div className="mt-3 bg-red-500/8 border border-red-500/10 rounded-xl p-3">
+                    <div className="flex items-center justify-center gap-2 text-red-400 mb-1">
+                      <XCircle className="w-5 h-5" /><span className="font-semibold text-sm">Récitation insuffisante</span>
+                    </div>
+                    <p className="text-red-400/50 text-xs leading-relaxed">Score en dessous de 30%. Réécoute la sourate en mode Apprendre avant de réessayer. Chaque mot compte pour ne pas induire en erreur pendant la prière.</p>
+                  </div>
+                )}
+
+                {/* 30-69% = encouragement */}
+                {result.overallScore >= 30 && result.overallScore < 70 && (
+                  <div className="flex items-center justify-center gap-2 mt-3 text-[#c9a84c]">
+                    <span className="font-semibold">Continue, tu y es presque !</span>
+                  </div>
+                )}
+
+                {/* 70%+ = validé */}
+                {result.overallScore >= 70 && (
+                  <div className="flex items-center justify-center gap-2 mt-3 text-[#34d399]">
+                    <CheckCircle2 className="w-5 h-5"/><span className="font-semibold">Sourate validée !</span><Star className="w-5 h-5 text-[#c9a84c] fill-[#c9a84c]"/>
+                  </div>
+                )}
               </div>
 
               {/* Scores breakdown */}
@@ -238,7 +286,7 @@ export default function SurahPage() {
                 <div className="flex justify-between"><span className="text-white/25 text-sm">Prononciation</span><span className="text-[#34d399] font-bold">{result.accuracy}%</span></div>
                 <div className="flex justify-between"><span className="text-white/25 text-sm">Tajwid</span><span className="text-[#c9a84c] font-bold">{result.tajwidAnalysis?.score||'-'}%</span></div>
                 <div className="h-px bg-white/[0.04]"/>
-                <div className="flex justify-between"><span className="text-white font-medium">Score global</span><span className={`font-bold text-lg ${result.overallScore>=70?'text-[#34d399]':'text-red-400'}`}>{result.overallScore}%</span></div>
+                <div className="flex justify-between"><span className="text-white font-medium">Score global</span><span className={`font-bold text-lg ${result.overallScore>=70?'text-[#34d399]':result.overallScore>=30?'text-[#c9a84c]':'text-red-400'}`}>{result.overallScore}%</span></div>
               </div>
 
               {/* Tajwid details */}
@@ -265,6 +313,7 @@ export default function SurahPage() {
                 <button onClick={()=>setResult(null)} className="flex-1 btn-primary text-sm">Réessayer</button>
                 <button onClick={()=>router.push('/')} className="flex-1 btn-ghost text-sm">Retour</button>
               </div>
+              </>}
             </div>
           )}
         </div>
